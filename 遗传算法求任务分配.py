@@ -26,8 +26,17 @@ task_profits = np.random.randint(10, 100, size=TASK_COUNT)
 def initialize_population():
     population = []
     for _ in range(POPULATION_SIZE):
-        # 随机分配任务到AGVs，这里简化为每个AGV分配等量任务
-        chromosome = [random.sample(range(TASK_COUNT), int(TASK_COUNT / AGV_COUNT)) for _ in range(AGV_COUNT)]
+        # 生成包含所有任务的序列，并随机打乱
+        all_tasks = list(range(TASK_COUNT))
+        random.shuffle(all_tasks)
+
+        # 均匀地分配任务给每个AGV
+        chromosome = []
+        tasks_per_agv = TASK_COUNT // AGV_COUNT  # 假设TASK_COUNT能被AGV_COUNT整除
+        for i in range(AGV_COUNT):
+            start_index = i * tasks_per_agv
+            end_index = (i + 1) * tasks_per_agv
+            chromosome.append(all_tasks[start_index:end_index])
         population.append(chromosome)
     return population
 
@@ -45,28 +54,51 @@ def genetic_algorithm():
     best_fitness = -np.inf
 
     for _ in range(MAX_ITERATIONS):
-        # 评估种群中每个个体的适应度，并选择最佳解
         for individual in population:
             fitness = fitness_function(individual)
             if fitness > best_fitness:
                 best_fitness = fitness
                 best_solution = individual
-
     # 输出每辆AGV的任务分配情况
     print("每辆AGV的任务分配情况：")
+    print(best_solution)
     for agv_index, tasks_assigned in enumerate(best_solution):
         print(f"AGV {agv_index + 1}: 任务 {tasks_assigned}")
+    return best_solution
 
 
-genetic_algorithm()
+best_solution=genetic_algorithm()
 
 # 绘图
-plt.figure(figsize=(8, 6))
+# plt.figure(figsize=(8, 6))
+# plt.scatter(tasks[:, 0], tasks[:, 1], color='blue', label='任务位置')
+# plt.scatter(AGV_DOCK_POSITION[0], AGV_DOCK_POSITION[1], color='red', label='AGV初始位置')
+# plt.xlabel('X 坐标')
+# plt.ylabel('Y 坐标')
+# plt.title('任务位置和AGV初始位置')
+# plt.legend()
+# plt.grid(True)
+# plt.show()
+
+
+# 假设已经有了最佳解，这里直接使用一个示例
+best_solution = genetic_algorithm()
+
+# 绘图
+plt.figure(figsize=(10, 8))
 plt.scatter(tasks[:, 0], tasks[:, 1], color='blue', label='任务位置')
 plt.scatter(AGV_DOCK_POSITION[0], AGV_DOCK_POSITION[1], color='red', label='AGV初始位置')
+
+colors = ['green', 'cyan', 'magenta', 'yellow', 'black']
+
+for agv_index, task_indices in enumerate(best_solution):
+    agv_path = [AGV_DOCK_POSITION] + [tasks[ti] for ti in task_indices]
+    agv_path = np.array(agv_path)
+    plt.plot(agv_path[:, 0], agv_path[:, 1], color=colors[agv_index], marker='o', label=f'AGV {agv_index+1} 路径')
+
 plt.xlabel('X 坐标')
 plt.ylabel('Y 坐标')
-plt.title('任务位置和AGV初始位置')
+plt.title('AGV任务分配与路径')
 plt.legend()
 plt.grid(True)
 plt.show()

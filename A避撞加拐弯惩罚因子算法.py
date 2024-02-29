@@ -10,11 +10,13 @@ class Node:
         self.g = 0  # 从起点到当前节点的实际移动成本
         self.h = 0  # 从当前节点到终点的估计移动成本（启发式成本）
         self.f = 0  # 节点的总成本(f = g + h)
+        self.turns = 0  # 新增：追踪拐弯次数
 
     def __lt__(self, other):
-        # 在优先队列中需要比较节点时，根据f值进行比较
+        # 在比较节点时，先比较总成本f，如果f相同，则比较拐弯次数
+        if self.f == other.f:
+            return self.turns < other.turns
         return self.f < other.f
-
 
 def get_neighbors(position, grid):
     """获取节点的所有可行邻居节点"""
@@ -26,30 +28,27 @@ def get_neighbors(position, grid):
             neighbors.append(neighbor)
     return neighbors
 
-
 def calculate_turn_penalty(parent, current, next_position, turn_penalty):
-    """计算拐弯惩罚因子"""
     if not parent:
-        return 0  # 如果没有父节点，说明是起点，不存在拐弯
+        return 0, 0  # 没有拐弯，拐弯次数不变
     prev_move = (current.position[0] - parent.position[0], current.position[1] - parent.position[1])
     current_move = (next_position[0] - current.position[0], next_position[1] - current.position[1])
-    return turn_penalty if prev_move != current_move else 0
+    if prev_move != current_move:
+        return turn_penalty, 1  # 发生拐弯，拐弯次数加1
+    return 0, 0  # 没有拐弯，拐弯次数不变
 
-
+# 修改 astar 函数以考虑拐弯次数
 def astar(grid, start, goal, turn_penalty=10):
-    """执行A*算法找到最短路径"""
-    open_list = []  # 开放列表，用于存储待检查的节点
-    closed_list = set()  # 关闭列表，用于存储已检查的节点
-
+    open_list = []
+    closed_list = set()
     start_node = Node(start)
-    heapq.heappush(open_list, start_node)  # 将起点加入开放列表
+    heapq.heappush(open_list, start_node)
 
     while open_list:
-        current_node = heapq.heappop(open_list)  # 选择F值最小的节点
-        closed_list.add(current_node.position)  # 将当前节点加入到关闭列表
+        current_node = heapq.heappop(open_list)
+        closed_list.add(current_node.position)
 
         if current_node.position == goal:
-            # 如果找到终点，重构并返回路径
             path = []
             while current_node:
                 path.append(current_node.position)
@@ -59,39 +58,32 @@ def astar(grid, start, goal, turn_penalty=10):
         neighbors = get_neighbors(current_node.position, grid)
         for next_position in neighbors:
             if next_position in closed_list:
-                continue  # 如果节点已在关闭列表中，则跳过
+                continue
 
             new_node = Node(next_position, current_node)
-            penalty = calculate_turn_penalty(current_node.parent, current_node, next_position, turn_penalty)
-            new_node.g = current_node.g + 1 + penalty
+            penalty, turns = calculate_turn_penalty(current_node.parent, current_node, next_position, turn_penalty)
+            new_node.g = current_node.g + 1
             new_node.h = abs(next_position[0] - goal[0]) + abs(next_position[1] - goal[1])
             new_node.f = new_node.g + new_node.h
+            new_node.turns = current_node.turns + turns  # 更新拐弯次数
 
-            if any(n.position == next_position and n.f <= new_node.f for n in open_list):
-                continue
-            heapq.heappush(open_list, new_node)
+            if not any(n for n in open_list if n.position == next_position and (n.f < new_node.f or (n.f == new_node.f and n.turns <= new_node.turns))):
+                heapq.heappush(open_list, new_node)
 
-    return None  # 如果开放列表为空，搜索失败
+    return None
 
 # 示例用法
 grid = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ]
-start = (12, 0)  # 起点坐标
-goal = (0, 12)  # 终点坐标
-turn_penalty = 1000# 设定拐弯惩罚因子
+start = (0, 0)  # 起点坐标
+goal = (3, 7)  # 终点坐标
+turn_penalty = 3# 设定拐弯惩罚因子
 
 path = astar(grid, start, goal)
 print("最短路径:", path)
