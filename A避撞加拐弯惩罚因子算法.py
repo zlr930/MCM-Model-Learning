@@ -62,7 +62,7 @@ def astar(grid, start, goal, turn_penalty=10):
 
             new_node = Node(next_position, current_node)
             penalty, turns = calculate_turn_penalty(current_node.parent, current_node, next_position, turn_penalty)
-            new_node.g = current_node.g + 1
+            new_node.g = current_node.g + 1 + penalty
             new_node.h = abs(next_position[0] - goal[0]) + abs(next_position[1] - goal[1])
             new_node.f = new_node.g + new_node.h
             new_node.turns = current_node.turns + turns  # 更新拐弯次数
@@ -74,15 +74,22 @@ def astar(grid, start, goal, turn_penalty=10):
 
 # 示例用法
 grid = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 1, 1, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ]
-start = (0, 0)  # 起点坐标
-goal = (3, 7)  # 终点坐标
+start = (12, 0)  # 起点坐标
+goal = (0, 12)  # 终点坐标
 turn_penalty = 3# 设定拐弯惩罚因子
 
 path = astar(grid, start, goal)
