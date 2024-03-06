@@ -42,7 +42,10 @@ def initialize_population(population_size, task_count, agv_count):
         # 第一层编码：任务的排列
         task_encoding = np.random.permutation(task_count)
         # 第二层编码：每个任务对应的AGV编号
-        agv_encoding = np.random.randint(0, agv_count, size=task_count)
+        agv_encoding = np.random.randint(0, agv_count, def adaptive_crossover_mutation_rates(k, K, m):
+    Pc = 1 / (1 + m * np.exp(k / K))
+    Pm = 1 / (1 - m * np.exp(k / K))
+    return Pc, Pmsize=task_count)
         population.append((task_encoding, agv_encoding))
     return population
 
@@ -80,10 +83,7 @@ def fitness_function(chromosome, tasks, task_profits, agv_speed, agv_dock_positi
     # 计算适应度值
     fitness = a1 * total_distance + a2 * total_time + a3 * total_profit
     return fitness
-def adaptive_crossover_mutation_rates(k, K, m):
-    Pc = 1 / (1 + m * np.exp(k / K))
-    Pm = 1 / (1 - m * np.exp(k / K))
-    return Pc, Pm
+
 
 
 def single_point_crossover(parent1, parent2, Pc):
