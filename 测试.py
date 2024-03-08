@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-population_size = 80  # 种群大小
+population_size = 100  # 种群大小
 task_count = 20  # 搬运任务数量
 agv_count = 5  # AGV数量
 task_positions=[[30, 29],[ 1, 15],[30, 13], [20, 27], [11, 28], [ 6, 15], [16,  3], [ 9, 26], [ 1, 10], [ 9, 29], [18, 20], [20, 21], [17, 27], [17, 10], [ 0, 24],[14,  6], [14,  3], [10, 19], [ 9, 29], [30, 13]]
 picking_stations=[[1,0],[ 4, 0],[8, 0], [12, 0], [16, 0], [1, 0],[ 4, 0],[8, 0], [12, 0], [16, 0], [1, 0],[ 4, 0],[8, 0], [12, 0], [16, 0], [1, 0],[ 4, 0],[8, 0], [12, 0], [16, 0],[1, 0],[ 4, 0],[8, 0], [12, 0], [16, 0]]
 agv_start_positions=[[10,0],[10,0],[10,0],[10,0],[10,0]]
 agv_speed=0.1
-generations=500
+generations=700
 m=0.05
 
 
@@ -275,7 +275,7 @@ def genetic_algorithm_with_simulated_annealing(task_positions, picking_stations,
                 best_fitness = fitness
                 best_solution = chromosome
 
-        fitness_history.append(1 / best_fitness)
+        fitness_history.append(1/best_fitness)
         temperature *= cooling_rate
         print(f"Generation {generation}: Best Fitness = {best_fitness}")
 
@@ -292,6 +292,10 @@ best_solution, best_fitness, fitness_history = genetic_algorithm_with_simulated_
 print("Best Solution:", best_solution)
 print("Best Fitness:", best_fitness)
 print("time:",1/best_fitness)
+order=get_agv_task_lists(best_solution)
+order_time=calculate_task_time(order,task_positions, picking_stations, agv_start_positions, agv_speed)
+print("order:",order)
+print("order_time:",order_time)
 
 # 绘制最优适应度值随迭代过程的变化图
 plt.plot(fitness_history)

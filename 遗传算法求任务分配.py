@@ -14,7 +14,7 @@ AGV_MAX_LOAD = 3  # AGV最大负载
 AGV_SPEED = 0.1  # 移动速度，单位：米/秒
 AGV_DOCK_POSITION = [9, 9]  # AGV停靠位置
 POPULATION_SIZE = 50  # 种群大小
-MAX_ITERATIONS = 100  # 最大迭代次数
+MAX_ITERATIONS = 500  # 最大迭代次数
 m = 0.05  # 自适应系数
 
 # 随机生成任务的货位坐标和收益
