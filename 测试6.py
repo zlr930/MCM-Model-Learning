@@ -10,12 +10,12 @@ agv_start_positions = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
 picking_stations = [[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1]]
 n = 6  # AGV一次最多运送的任务数
 v = 0.1  # AGV的平均速度
-max_generations=5000
+max_generations=500
 Pm=0.1  #变异系数
 Pc=0.6  #交叉系数
 initial_temperature=1000
 cooling_rate=0.95
-
+elite_count=2
 
 def filter_duplicate_tasks(task_positions):
     """
@@ -53,28 +53,19 @@ def initialize_population(population_size, task_count, agv_count):
         population.append(chromosome)
     return population
 
-# population = initialize_population(population_size, task_count, agv_count)
-# m=len(population)
-# for i in range(m):
-#     print(f"染色体{i}：", population[i])
-
 def get_agv_tasks_from_chromosome(chromosome, agv_count):
-    # 确保字典覆盖所有可能的AGV编号
-    agv_tasks = {agv_id: [] for agv_id in range(agv_count)}
+    # 初始化一个字典来保存每个AGV的任务
+    agv_tasks = {i: [] for i in range(agv_count)}
 
-    for task_id, agv_id in chromosome:
-        # 检查AGV编号是否在预期范围内
-        if agv_id in agv_tasks:
-            agv_tasks[agv_id].append(task_id)
-        else:
-            # 如果AGV编号不在预期范围内，打印错误信息
-            print(f"错误: 染色体中存在无效的AGV编号 {agv_id}")
+    # 假设`chromosome`中的每个元素结构为 [task_id, agv_id]
+    for gene in chromosome:
+        task_id, agv_id = gene  # 将基因解包为task_id和agv_id
+        agv_tasks[agv_id].append(task_id)
 
-    # 按AGV编号顺序提取任务列表
-    all_agv_tasks = [agv_tasks[agv_id] for agv_id in sorted(agv_tasks)]
+    # 将任务字典转换为每个AGV的任务列表
+    tasks_list = [agv_tasks[i] for i in range(agv_count)]
 
-    return all_agv_tasks
-
+    return tasks_list
 def manhattan_distance(point1, point2):
     """计算两点之间的曼哈顿距离。"""
     return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
@@ -179,24 +170,26 @@ def reassign_tasks(child, parent, agv_count):
 
     # print("更新后的child:", child)
 # 注意: 这个函数不需要返回child，因为它直接修改了传入的child数组
+def perform_crossover(parent1, parent2, Pc, agv_count):
+    # 初始化子代染色体，它们最开始与父代相同
+    child1, child2 = parent1.copy(), parent2.copy()
+
+    # 执行交叉操作的决定
+    if random.random() < Pc:
+        # 执行交叉
+        child1, child2 = dynamic_crossover(parent1, parent2, agv_count)
+
+    return child1, child2
 
 
-def perform_crossover(population, Pc, agv_count):
-    new_population = []
-    for i in range(0, len(population), 2):
-        if i+1 < len(population):
-            parent1, parent2 = population[i], population[i+1]
-            child1, child2 = dynamic_crossover(parent1, parent2, agv_count)
-            # 只添加子代到新种群如果交叉率被满足
-            if random.random() < Pc:
-                new_population.extend([child1, child2])
-            else:
-                new_population.extend([parent1, parent2])
-        else:
-            # 如果种群大小是奇数，直接添加最后一个染色体
-            new_population.append(population[i])
-    return new_population
-def mutate_chromosome_with_shift(chromosome, agv_count):
+import numpy as np
+
+
+def mutate_chromosome_with_shift(chromosome, agv_count, Pm):
+    # 检查是否执行变异
+    if np.random.rand() > Pm:
+        return chromosome  # 如果不执行变异，返回原染色体
+
     num_genes = len(chromosome)
     # 随机选择插入位和基因位
     gene_pos = np.random.randint(num_genes)
@@ -207,80 +200,139 @@ def mutate_chromosome_with_shift(chromosome, agv_count):
     new_agvid = np.random.choice([x for x in range(agv_count) if x != gene_to_move[1]])
     gene_to_move[1] = new_agvid
 
+    # 创建一个新的染色体数组以包含变异
+    new_chromosome = chromosome.tolist()
+
     # 将基因位的基因移动到插入位
     if gene_pos < insert_pos:
-        # 如果基因位在插入位之前，先删除原基因位，再在新位置插入基因
-        chromosome = np.delete(chromosome, gene_pos, axis=0)
-        chromosome = np.insert(chromosome, insert_pos, gene_to_move, axis=0)
+        # 删除原位置的基因，插入到新位置
+        del new_chromosome[gene_pos]
+        new_chromosome.insert(insert_pos, gene_to_move)
     else:
-        # 如果基因位在插入位之后或等于插入位，先在新位置插入基因，再删除原基因位
-        chromosome = np.insert(chromosome, insert_pos, gene_to_move, axis=0)
-        chromosome = np.delete(chromosome, gene_pos + 1, axis=0)
+        # 先插入到新位置，再删除原位置的基因
+        new_chromosome.insert(insert_pos, gene_to_move)
+        del new_chromosome[gene_pos + 1]  # 因为插入已经发生，所以原位置向后移动了1位
 
-    return chromosome
-def mutate_population_with_shift(population, agv_count, Pm):
+    return np.array(new_chromosome)
+# task_positionss,task_counts=filter_duplicate_tasks(task_positions)
+# print(task_positionss,task_counts)
+def roulette_wheel_selection(fitness_values):
+    #加入轮盘赌函数
+    total_fitness = sum(fitness_values)
+    selection_probs = [f / total_fitness for f in fitness_values]
+    selected_index = np.random.choice(len(fitness_values), p=selection_probs)
+    return selected_index
 
-    for i in range(len(population)):
-        if np.random.rand() < Pm:  # 根据变异概率决定是否进行变异
-            population[i] = mutate_chromosome_with_shift(population[i],agv_count)
-    return population
+def elitism(population, fitness_values, elite_count):
+    #加入精英策略
+    elite_indices = np.argsort(fitness_values)[:elite_count]
+    elites = [population[index] for index in elite_indices]
+    return elites
 
-task_positionss,task_counts=filter_duplicate_tasks(task_positions)
-print(task_positionss,task_counts)
 
-def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stations,
-                              agv_start_positions, v, max_generations, Pm, Pc, initial_temperature,
-                              cooling_rate):
-    population = initialize_population(population_size, task_counts, agv_count)
-    best_fitness_values = []
+def accept_new_individual(candidate_fitness, best_fitness, temperature):
+    """
+    根据模拟退火的概率接受准则来决定是否接受新个体。
+
+    :param candidate_fitness: 新候选个体的适应度。
+    :param best_fitness: 当前最佳个体的适应度。
+    :param temperature: 当前的模拟退火温度。
+    :return: 布尔值，表示是否接受新个体。
+    """
+    # 如果新候选个体的适应度更好，则始终接受
+    if candidate_fitness < best_fitness:
+        return True
+    # 如果新候选个体的适应度较差，根据模拟退火的概率接受准则决定是否接受
+    else:
+        delta_fitness = candidate_fitness - best_fitness
+        acceptance_probability = np.exp(-delta_fitness / temperature)
+        return np.random.rand() < acceptance_probability
+
+def genetic_algorithm_SA(population_size, task_count, agv_count, task_positions, picking_stations,
+                         agv_start_positions, n, v, max_generations, Pm, Pc, initial_temperature, cooling_rate,
+                         elite_count):
+    # 初始化种群
+    population = initialize_population(population_size, task_count, agv_count)
+    # 计算适应度
+    fitness_values = np.array([fitness_function(get_agv_tasks_from_chromosome(individual, agv_count), task_positions,
+                                                agv_start_positions, picking_stations, n, v) for individual in population])
+
     temperature = initial_temperature
-    overall_best_chromosome = None
-    overall_best_fitness = float('inf')
+    best_fitness_history = []
+    # 保持对当前最佳适应度的追踪
+    best_fitness = min(fitness_values)
 
     for generation in range(max_generations):
-        fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positionss,
-                                           agv_start_positions, picking_stations, n, v) for chromosome in population]
+        # 应用精英策略保留一定数量的最优个体
+        elites = elitism(population, fitness_values, elite_count)
+        # 更新新种群，包括精英个体
+        new_population = elites[:]
 
+        # 使用轮盘赌方法选择父代
+        parents_indices = [roulette_wheel_selection(fitness_values) for _ in range(population_size - elite_count * 2)]
+
+        # 循环直到新种群填满
+        while len(new_population) < population_size:
+            # 随机选择两个父代进行交叉和变异
+            idx1, idx2 = np.random.choice(parents_indices, 2, replace=False)
+            parent1, parent2 = population[idx1], population[idx2]
+            child1, child2 = perform_crossover(parent1, parent2, Pc, agv_count)
+            print(child1)
+            print(child2)
+            child1 = mutate_chromosome_with_shift(child1, agv_count, Pm)
+            child2 = mutate_chromosome_with_shift(child2, agv_count, Pm)
+            # 利用模拟退火决定是否接受新个体
+            if accept_new_individual(fitness_function(get_agv_tasks_from_chromosome(child1, agv_count), task_positions,
+                                                      agv_start_positions, picking_stations, n, v), best_fitness, temperature):
+                new_population.append(child1)
+            # 确保有足够的空间添加第二个子代
+            if len(new_population) < population_size and accept_new_individual(
+                    fitness_function(get_agv_tasks_from_chromosome(child2, agv_count), task_positions,
+                                     agv_start_positions, picking_stations, n, v), best_fitness, temperature):
+                new_population.append(child2)
+
+        # 更新种群和适应度
+        population = new_population[:population_size]
+        fitness_values = np.array([fitness_function(get_agv_tasks_from_chromosome(individual, agv_count),
+                                                    task_positions, agv_start_positions, picking_stations, n, v) for
+                                   individual in population])
+        # 更新最佳适应度值
         current_best_fitness = min(fitness_values)
-        current_best_index = fitness_values.index(current_best_fitness)
-        if current_best_fitness < overall_best_fitness:
-            overall_best_fitness = current_best_fitness
-            overall_best_chromosome = population[current_best_index]
+        if current_best_fitness < best_fitness:
+            best_fitness = current_best_fitness
 
-        best_fitness_values.append(current_best_fitness)
+        # 记录最佳适应度
+        best_fitness_history.append(best_fitness)
 
-        new_population = perform_crossover(population, Pc, agv_count)
-        new_population = mutate_population_with_shift(new_population, agv_count, Pm)
-
-        new_fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positionss,
-                                               agv_start_positions, picking_stations, n, v) for chromosome in new_population]
-
-        for i in range(len(population)):
-            if new_fitness_values[i] < fitness_values[i] or np.random.rand() < np.exp(
-                    (fitness_values[i] - new_fitness_values[i]) / temperature):
-                population[i] = new_population[i]
-                fitness_values[i] = new_fitness_values[i]
-
+        # 降低温度
         temperature *= cooling_rate
-    print(best_fitness_values)
-    print(overall_best_chromosome)
-    print(overall_best_fitness)
 
-    # 绘图
-    plt.plot(best_fitness_values)
-    plt.title('Best Fitness Value over Generations')
+    # 绘制适应度历史
+    plt.plot(best_fitness_history)
     plt.xlabel('Generation')
-    plt.ylabel('Best Fitness Value')
+    plt.ylabel('Best Fitness')
+    plt.title('Best Fitness Over Generations')
     plt.show()
 
-    # 返回最优AGV任务分配结果、最优适应度值以及每次迭代后的最优适应度值
-    return overall_best_chromosome, overall_best_fitness, best_fitness_values
-
+    best_index = np.argmin(fitness_values)
+    return population[best_index], fitness_values[best_index], best_fitness_history
 
 # 执行函数
-best_solution, best_fitness, best_fitness_values = genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stations,agv_start_positions, v, max_generations, Pm, Pc, initial_temperature, cooling_rate)
+best_solution, best_fitness, best_fitness_values = genetic_algorithm_SA(population_size, task_count, agv_count, task_positions, picking_stations,
+                         agv_start_positions, n, v, max_generations, Pm, Pc, initial_temperature, cooling_rate,elite_count)
 
 # 输出结果
 print("最优AGV任务分配结果:", best_solution)
 print("最优适应度值:", best_fitness)
 print("每次迭代后的最优适应度值:", best_fitness_values)
+
+# population = initialize_population(population_size, task_count, agv_count)
+# print(population)
+# for individual in population:
+#     task_assment=get_agv_tasks_from_chromosome(individual,agv_count)
+#     print(task_assment)
+#     times=calculate_agv_time(task_assment, task_positions, agv_start_positions, picking_stations, n, v)
+#     print(times)
+#     fitness_value=fitness_function(task_assment, task_positions, agv_start_positions, picking_stations, n, v)
+#     print(fitness_value)
+

@@ -2,19 +2,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-population_size = 10  # 种群大小
-task_count = 10  # 搬运任务数量
-agv_count = 2  # AGV数量
-task_positions = [[3, 8], [18, 11], [20, 5], [6, 11], [8, 17], [20, 14], [6, 5], [8, 17], [18, 11], [15, 14]]
-agv_start_positions = [[3, 0], [3, 0], [3, 0]]
-picking_stations = [[8, 1], [8, 1], [8, 1], [13, 1], [13, 1], [13, 1], [18, 1], [18, 1], [18, 1], [18, 1]]
-n = 3  # AGV一次最多运送的任务数
-v = 1  # AGV的平均速度
-max_generations=500
+population_size = 100  # 种群大小
+task_count = 60  # 搬运任务数量
+agv_count = 5  # AGV数量
+task_positions = [[3,5],[5,11],[4,17],[6,20],[24,2],[15,8],[25,8],[22,11],[13,17],[25,20],[6,5],[26,14],[18,11],[22,8],[5,11],[11,14],[15,5],[5,8],[9,2],[11,14],[24,5],[22,11],[3,5],[19,17],[28,5],[18,8],[1,11],[28,5],[21,14],[1,14],[9,5],[26,11],[19,17],[18,8],[14,11],[7,11],[16,14],[2,2],[22,17],[5,14],[19,5],[16,17],[14,14],[11,14],[14,11],[8,17],[7,8],[1,11],[7,8],[13,5],[11,20],[17,20],[28,17],[7,8],[11,11],[17,2],[28,14],[28,8],[21,14],[3,20]]
+agv_start_positions = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
+picking_stations = [[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1]]
+n = 6  # AGV一次最多运送的任务数
+v = 0.1  # AGV的平均速度
+max_generations=5000
 Pm=0.1  #变异系数
 Pc=0.6  #交叉系数
 initial_temperature=1000
 cooling_rate=0.95
+
 
 def initialize_population(population_size, task_count, agv_count):
 
@@ -270,7 +271,7 @@ def genetic_algorithm_with_sa(population_size, task_count, agv_count, task_posit
     print(overall_best_fitness)
 
     # 绘图
-    plt.plot(best_fitness_values, marker='o', linestyle='-', color='b')
+    plt.plot(best_fitness_values)
     plt.title('Best Fitness Value over Generations')
     plt.xlabel('Generation')
     plt.ylabel('Best Fitness Value')
