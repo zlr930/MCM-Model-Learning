@@ -1,38 +1,54 @@
 import matplotlib.pyplot as plt
+import matplotlib
+
+# 设置字体为Songti SC，字体大小为12，字体权重为轻
+matplotlib.rcParams['font.family'] = 'Heiti TC'
+#matplotlib.rcParams['font.size'] = 15
+matplotlib.rcParams['font.weight'] = 'light'  # 尝试使用 'normal' 如果 'light' 效果不理想
+matplotlib.rcParams['axes.unicode_minus'] = False  # 确保能够显示负号
 import numpy as np
 import random
+from tqdm import tqdm
 
 population_size = 100  # 种群大小
-task_count = 60  # 搬运任务数量
+task_count = 80  # 搬运任务数量
 agv_count = 5  # AGV数量
-task_positions = [[3,5],[5,11],[4,17],[6,20],[24,2],[15,8],[25,8],[22,11],[13,17],[25,20],[6,5],[26,14],[18,11],[22,8],[5,11],[11,14],[15,5],[5,8],[9,2],[11,14],[24,5],[22,11],[3,5],[19,17],[28,5],[18,8],[1,11],[28,5],[21,14],[1,14],[9,5],[26,11],[19,17],[18,8],[14,11],[7,11],[16,14],[2,2],[22,17],[5,14],[19,5],[16,17],[14,14],[11,14],[14,11],[8,17],[7,8],[1,11],[7,8],[13,5],[11,20],[17,20],[28,17],[7,8],[11,11],[17,2],[28,14],[28,8],[21,14],[3,20]]
-agv_start_positions = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
-picking_stations = [[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[13, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[17, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1],[15, 1]]
+task_positions = [[112,9],[96,28],[57,16],[19,42],[93,36],[63,42],[64,4],[89,15],[93,42],[40,36],[102,10],[57,22],[107,28],[27,48],[63,42],[90,48],[27,41],[56,48],[90,9],[107,28],[63,32],[79,41],[89,15],[47,43],[103,3],[78,36],[95,21],[76,48],[63,36],[83,3],[57,16],[48,22],[103,22],[83,42],[46,28],[46,48],[85,22],[89,32],[93,42],[48,10],[13,48],[49,3],[41,16],[111,21],[54,9],[50,36],[102,36],[90,9],[66,15],[96,28],[30,42],[65,28],[67,48],[109,16],[57,22],[42,4],[39,28],[27,41],[8,42],[98,16],[48,10],[100,48],[77,29],[100,4],[63,42],[65,10],[105,16],[85,10],[13,42],[57,28],[114,4],[48,16],[95,21],[57,28],[26,48],[90,4],[68,22],[46,28],[104,42],[99,10]]
+agv_start_positions = [[3, 1], [5, 1], [7, 1], [9, 1], [11, 1]]
+picking_stations = [[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27,21],[27,21],[27,21],[27,21],[27,21],[27,21],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,21],[27,21],[27,21],[27,21],[27,21],[27,21],[27,21],[27,21],[27,21],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,32],[27,21],[27,21],[27,21],[27,21],[27,21],[27,32],[27,32],[27,32],[27,32],[27,32],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27,21],[27,21],[27,21],[27,21],[27,21],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9],[27, 9]]
 n = 6  # AGV一次最多运送的任务数
 v = 0.1  # AGV的平均速度
-max_generations=5000
+max_generations=15000
 Pm=0.1  #变异系数
 Pc=0.6  #交叉系数
 initial_temperature=1000
 cooling_rate=0.95
 
-
-def filter_duplicate_tasks(task_positions):
+def filter_duplicate_tasks_with_picking_stations(task_positions, picking_stations):
     """
-    移除task_positions中的重复任务位置，并返回筛选后的列表及其大小。
+    删除task_positions中的重复任务位置，并同步删除picking_stations中对应的数据。
 
-    :param task_positions: 一个列表，包含各个任务的位置。
-    :return: 一个元组，包含筛选后的任务位置列表和任务数量。
+    :param task_positions: 包含各个任务的位置的列表。
+    :param picking_stations: 与task_positions维度相同的拣货站列表。
+    :return: 一个元组，包含去重后的任务位置列表、去重后的拣货站列表及任务数量。
     """
-    # 使用集合（set）来自动移除重复项，但这会丢失原始顺序
-    # 如果保持顺序很重要，可以使用下面的方法
+    if len(task_positions) != len(picking_stations):
+        raise ValueError("task_positions 和 picking_stations 列表的长度必须相同。")
+
     unique_task_positions = []
-    [unique_task_positions.append(item) for item in task_positions if item not in unique_task_positions]
+    filtered_picking_stations = []
 
-    # 更新任务数量
+    for i, item in enumerate(task_positions):
+        if item not in unique_task_positions:
+            unique_task_positions.append(item)
+            try:
+                filtered_picking_stations.append(picking_stations[i])
+            except IndexError:
+                raise IndexError(f"尝试访问picking_stations的索引{i}超出范围。")
+
     task_count = len(unique_task_positions)
 
-    return unique_task_positions, task_count
+    return unique_task_positions, filtered_picking_stations, task_count
 
 def initialize_population(population_size, task_count, agv_count):
 
@@ -77,7 +93,7 @@ def get_agv_tasks_from_chromosome(chromosome, agv_count):
 
 def manhattan_distance(point1, point2):
     """计算两点之间的曼哈顿距离。"""
-    return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
+    return (abs(point1[0] - point2[0]) + abs(point1[1] - point2[1]))*0.5
 
 
 def calculate_agv_time(genes, task_positions, agv_start_positions, picking_stations, n, v):
@@ -86,7 +102,7 @@ def calculate_agv_time(genes, task_positions, agv_start_positions, picking_stati
     # 遍历每辆AGV及其分配的任务
     for agv_id, tasks in enumerate(genes):
         agv_time = 0  # 初始化当前AGV的时间
-        print(agv_id)
+        #print(agv_id)
         current_position = agv_start_positions[agv_id]  # AGV的起始位置
 
         # 分批处理任务
@@ -225,10 +241,10 @@ def mutate_population_with_shift(population, agv_count, Pm):
             population[i] = mutate_chromosome_with_shift(population[i],agv_count)
     return population
 
-task_positionss,task_counts=filter_duplicate_tasks(task_positions)
-print(task_positionss,task_counts)
+task_positionss,picking_stationss,task_counts=filter_duplicate_tasks_with_picking_stations(task_positions, picking_stations)
+print(task_positionss,picking_stationss,task_counts)
 
-def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stations,
+def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stationss,
                               agv_start_positions, v, max_generations, Pm, Pc, initial_temperature,
                               cooling_rate):
     population = initialize_population(population_size, task_counts, agv_count)
@@ -237,9 +253,9 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
     overall_best_chromosome = None
     overall_best_fitness = float('inf')
 
-    for generation in range(max_generations):
+    for generation in tqdm(range(max_generations), desc="Processing Generations"):
         fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positionss,
-                                           agv_start_positions, picking_stations, n, v) for chromosome in population]
+                                           agv_start_positions, picking_stationss, n, v) for chromosome in population]
 
         current_best_fitness = min(fitness_values)
         current_best_index = fitness_values.index(current_best_fitness)
@@ -253,7 +269,7 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
         new_population = mutate_population_with_shift(new_population, agv_count, Pm)
 
         new_fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positionss,
-                                               agv_start_positions, picking_stations, n, v) for chromosome in new_population]
+                                               agv_start_positions, picking_stationss, n, v) for chromosome in new_population]
 
         for i in range(len(population)):
             if new_fitness_values[i] < fitness_values[i] or np.random.rand() < np.exp(
@@ -266,11 +282,12 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
     print(overall_best_chromosome)
     print(overall_best_fitness)
 
-    # 绘图
+
+
     plt.plot(best_fitness_values)
-    plt.title('Best Fitness Value over Generations')
-    plt.xlabel('Generation')
-    plt.ylabel('Best Fitness Value')
+    plt.title('算法迭代图')
+    plt.xlabel('迭代次数/次')
+    plt.ylabel('时间/s')
     plt.show()
 
     # 返回最优AGV任务分配结果、最优适应度值以及每次迭代后的最优适应度值
@@ -278,7 +295,7 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
 
 
 # 执行函数
-best_solution, best_fitness, best_fitness_values = genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stations,agv_start_positions, v, max_generations, Pm, Pc, initial_temperature, cooling_rate)
+best_solution, best_fitness, best_fitness_values = genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stationss,agv_start_positions, v, max_generations, Pm, Pc, initial_temperature, cooling_rate)
 
 # 输出结果
 print("最优AGV任务分配结果:", best_solution)
