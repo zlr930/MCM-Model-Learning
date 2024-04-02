@@ -252,6 +252,8 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
     temperature = initial_temperature
     overall_best_chromosome = None
     overall_best_fitness = float('inf')
+    overall_best_agv_times = []  # 用于保存最优适应度值对应的每辆AGV完成任务的时间列表
+    overall_best_agv_tasks = []  # 新增，用于保存最优适应度值对应的每辆AGV的搬运任务及顺序
 
     for generation in tqdm(range(max_generations), desc="Processing Generations"):
         fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positionss,
@@ -262,6 +264,11 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
         if current_best_fitness < overall_best_fitness:
             overall_best_fitness = current_best_fitness
             overall_best_chromosome = population[current_best_index]
+            # 保存当前最优解对应的每辆AGV的完成时间列表和搬运任务及顺序
+            overall_best_agv_times = calculate_agv_time(get_agv_tasks_from_chromosome(overall_best_chromosome, agv_count),
+                                                        task_positionss, agv_start_positions, picking_stationss, n, v)
+            # 获取并保存每辆AGV的搬运任务及顺序
+            overall_best_agv_tasks = get_agv_tasks_from_chromosome(overall_best_chromosome, agv_count)
 
         best_fitness_values.append(current_best_fitness)
 
@@ -278,26 +285,24 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
                 fitness_values[i] = new_fitness_values[i]
 
         temperature *= cooling_rate
-    print(best_fitness_values)
-    print(overall_best_chromosome)
-    print(overall_best_fitness)
-
-
 
     plt.plot(best_fitness_values)
     plt.title('算法迭代图')
-    plt.xlabel('迭代次数/次')
-    plt.ylabel('时间/s')
+    plt.xlabel('迭代次数')
+    plt.ylabel('最长完成时间 (s)')
     plt.show()
 
-    # 返回最优AGV任务分配结果、最优适应度值以及每次迭代后的最优适应度值
-    return overall_best_chromosome, overall_best_fitness, best_fitness_values
-
+    # 返回最优解、最优适应度值、最优适应度值历史记录、最优解对应的每辆AGV的完成时间列表以及搬运任务及顺序
+    return overall_best_chromosome, overall_best_fitness, best_fitness_values, overall_best_agv_times, overall_best_agv_tasks
 
 # 执行函数
-best_solution, best_fitness, best_fitness_values = genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stationss,agv_start_positions, v, max_generations, Pm, Pc, initial_temperature, cooling_rate)
+best_solution, best_fitness, best_fitness_values, best_agv_times, best_agv_tasks = genetic_algorithm_with_sa(
+    population_size, task_counts, agv_count, task_positionss, picking_stationss,
+    agv_start_positions, v, max_generations, Pm, Pc, initial_temperature, cooling_rate)
 
 # 输出结果
 print("最优AGV任务分配结果:", best_solution)
 print("最优适应度值:", best_fitness)
 print("每次迭代后的最优适应度值:", best_fitness_values)
+print("对应的每辆AGV完成任务的时间列表:", best_agv_times)
+print("最优适应度下每辆AGV的搬运任务及顺序:", best_agv_tasks)
