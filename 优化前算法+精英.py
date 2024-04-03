@@ -202,46 +202,48 @@ def mutate_population_with_shift(population, agv_count, Pm):
             population[i] = mutate_chromosome_with_shift(population[i],agv_count)
     return population
 
-def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positionss, picking_stationss,
+
+def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_positions, picking_stations,
                               agv_start_positions, v, max_generations, Pm, Pc, initial_temperature,
                               cooling_rate):
     population = initialize_population(population_size, task_counts, agv_count)
     best_fitness_values = []
     temperature = initial_temperature
+
+    # 初始化精英策略所需的变量
+    elite_count = max(1, population_size // 20)  # 保留最佳的5%个体作为精英
     overall_best_chromosome = None
     overall_best_fitness = float('inf')
-    overall_best_agv_times = []  # 用于保存最优适应度值对应的每辆AGV完成任务的时间列表
-    overall_best_agv_tasks = []  # 新增，用于保存最优适应度值对应的每辆AGV的搬运任务及顺序
+    overall_best_agv_times = []
+    overall_best_agv_tasks = []
 
     for generation in tqdm(range(max_generations), desc="Processing Generations"):
+        # 计算适应度并保留最佳解
         fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positions,
                                            agv_start_positions, picking_stations, v) for chromosome in population]
 
-        current_best_fitness = min(fitness_values)
-        current_best_index = fitness_values.index(current_best_fitness)
-        if current_best_fitness < overall_best_fitness:
-            overall_best_fitness = current_best_fitness
-            overall_best_chromosome = population[current_best_index]
-            # 保存当前最优解对应的每辆AGV的完成时间列表和搬运任务及顺序
-            overall_best_agv_times = calculate_agv_time(get_agv_tasks_from_chromosome(overall_best_chromosome, agv_count),
-                                                        task_positionss, agv_start_positions, picking_stationss, v)
-            # 获取并保存每辆AGV的搬运任务及顺序
+        sorted_indices = sorted(range(len(fitness_values)), key=lambda i: fitness_values[i])
+        elites = [population[i] for i in sorted_indices[:elite_count]]
+
+        if fitness_values[sorted_indices[0]] < overall_best_fitness:
+            overall_best_fitness = fitness_values[sorted_indices[0]]
+            overall_best_chromosome = population[sorted_indices[0]]
+            overall_best_agv_times = calculate_agv_time(
+                get_agv_tasks_from_chromosome(overall_best_chromosome, agv_count),
+                task_positions, agv_start_positions, picking_stations, v)
             overall_best_agv_tasks = get_agv_tasks_from_chromosome(overall_best_chromosome, agv_count)
 
-        best_fitness_values.append(current_best_fitness)
+        best_fitness_values.append(overall_best_fitness)
 
+        # 执行交叉和变异，生成新种群
         new_population = perform_crossover(population, Pc, agv_count)
         new_population = mutate_population_with_shift(new_population, agv_count, Pm)
 
-        new_fitness_values = [fitness_function(get_agv_tasks_from_chromosome(chromosome, agv_count), task_positions,
-                                               agv_start_positions, picking_stations, v) for chromosome in new_population]
+        # 将精英个体直接加入新种群
+        new_population = new_population[:(population_size - elite_count)] + elites
 
-        for i in range(len(population)):
-            if new_fitness_values[i] < fitness_values[i] or np.random.rand() < np.exp(
-                    (fitness_values[i] - new_fitness_values[i]) / temperature):
-                population[i] = new_population[i]
-                fitness_values[i] = new_fitness_values[i]
-
+        # 使用模拟退火策略选择新种群
+        population = new_population
         temperature *= cooling_rate
 
     plt.plot(best_fitness_values)
@@ -250,8 +252,10 @@ def genetic_algorithm_with_sa(population_size, task_counts, agv_count, task_posi
     plt.ylabel('最长完成时间 (s)')
     plt.show()
 
-    # 返回最优解、最优适应度值、最优适应度值历史记录、最优解对应的每辆AGV的完成时间列表以及搬运任务及顺序
     return overall_best_chromosome, overall_best_fitness, best_fitness_values, overall_best_agv_times, overall_best_agv_tasks
+
+
+# 然后，你可以按照之前的方式调用`genetic_algorithm_with_sa`函数。
 
 # 执行函数
 best_solution, best_fitness, best_fitness_values, best_agv_times, best_agv_tasks = genetic_algorithm_with_sa(
